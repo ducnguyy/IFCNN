@@ -62,9 +62,9 @@ else:
 
 # load pretrained model
 model = myIFCNN(fuse_scheme=fuse_scheme)
-model.load_state_dict(torch.load('snapshots/'+ model_name + '.pth'))
+model.load_state_dict(torch.load('snapshots/'+ model_name + '.pth', map_location=torch.device("cpu")))
 model.eval()
-model = model.cuda()
+#model = model.cuda()
 
 
 # ## 3. Use IFCNN to respectively fuse CMF, IV and MD datasets
@@ -75,50 +75,64 @@ model = model.cuda()
 
 from utils.myDatasets import ImagePair
 
-IV_filenames = ['Camp', 'Camp1', 'Dune', 'Gun', 'Navi', 'Kayak', 'Octec', 'Road', 'Road2', 'Steamboat', 'T2', 'T3', 'Trees4906', 'Trees4917', 'Window']
+IV_filenames = ['Camp', 'Camp1', 'Dune', 'Gun', 'Navi', 'Kayak', 'Octec', 'Road', 'Road2', 'Steamboat', 'T2', 'T3', 'Trees4906', 'Trees4917']
 MF_filenames = ['clock',  'lab', 'pepsi', 'book', 'flower', 'desk', 'seascape', 'temple', 'leopard', 'wine', 'balloon', 'calendar', 'corner', 'craft', 'leaf', 'newspaper', 'girl', 'grass', 'toy']
 
-datasets = ['CMF', 'IV', 'MD'] # Color MultiFocus, Infrared-Visual, MeDical image datasets
-datasets_num = [20, 15, 8]     # number of image sets in each dataset
+datasets = ['CMF', 'IV', 'MD1', 'MD2'] # Color MultiFocus, Infrared-Visual, MeDical image datasets
+datasets_num = [97, 15, 8]     # number of image sets in each dataset
 is_save = True                 # if you do not want to save images, then change its value to False
 
 for j in range(len(datasets)):
     begin_time = time.time()
-    for ind in range(datasets_num[j]):
-        if j == 0:
+    #for ind in range(datasets_num[j]):
+    for ind in range(19, 116):
+        filename = ''
+        #if j == 0:
             # lytro-dataset: two images. Number: 20
-            dataset = datasets[j]      # Color Multifocus Images
-            is_gray = False            # Color (False) or Gray (True)
-            mean=[0.485, 0.456, 0.406] # normalization parameters
-            std=[0.229, 0.224, 0.225]
+        #    dataset = datasets[j]      # Color Multifocus Images
+        #    is_gray = False            # Color (False) or Gray (True)
+        #    mean=[0.485, 0.456, 0.406] # normalization parameters
+        #    std=[0.229, 0.224, 0.225]
             
-            root = 'datasets/CMFDataset/'
-            filename = 'lytro-{:02}'.format(ind+1)
-            path1 = os.path.join('{0}-A.jpg'.format(root + filename))
-            path2 = os.path.join('{0}-B.jpg'.format(root + filename))
-        elif j == 1:
-            # infrare and visual image dataset. Number: 14
-            dataset = datasets[j]  # Infrared and Visual Images
-            is_gray = True         # Color (False) or Gray (True)
-            mean=[0, 0, 0]         # normalization parameters
-            std=[1, 1, 1]
+        #    root = 'datasets/CMFDataset/'
+        #    filename = 'lytro-{:02}'.format(ind+1)
+        #    path1 = os.path.join('{0}-A.jpg'.format(root + filename))
+        #    path2 = os.path.join('{0}-B.jpg'.format(root + filename))
+        #elif j == 1:
+        #    # infrare and visual image dataset. Number: 14
+        #    dataset = datasets[j]  # Infrared and Visual Images
+        #    is_gray = True         # Color (False) or Gray (True)
+        #    mean=[0, 0, 0]         # normalization parameters
+        #    std=[1, 1, 1]
             
-            root = 'datasets/IVDataset/'
-            filename = IV_filenames[ind]
-            path1 = os.path.join(root, '{0}_Vis.png'.format(filename))
-            path2 = os.path.join(root, '{0}_IR.png'.format(filename))
-        elif j == 2:
+        #    root = 'datasets/IVDataset/'
+        #    filename = IV_filenames[ind]
+        #    path1 = os.path.join(root, '{0}_Vis.png'.format(filename))
+        #    path2 = os.path.join(root, '{0}_IR.png'.format(filename))
+        #elif j == 2:
             # medical image dataset: CT (MR) and MR. Number: 8
+        #    dataset = datasets[j]  # Medical Image
+        #    is_gray = True         # Color (False) or Gray (True)
+        #    mean=[0, 0, 0]         # normalization parameters
+        #    std=[1, 1, 1]
+            
+        #    root = 'datasets/MDDataset/'
+        #    filename = 'c{:02}'.format(ind+1)
+        #    path1 = os.path.join('{0}_1.tif'.format(root + filename))
+        #    path2 = os.path.join('{0}_2.tif'.format(root + filename))
+
+        if j == 0:
+            # medical image dataset 2: CT (MR) and MR. Number: 8
             dataset = datasets[j]  # Medical Image
             is_gray = True         # Color (False) or Gray (True)
             mean=[0, 0, 0]         # normalization parameters
             std=[1, 1, 1]
             
-            root = 'datasets/MDDataset/'
+            root = 'datasets/MDDataset_2/'
             filename = 'c{:02}'.format(ind+1)
-            path1 = os.path.join('{0}_1.tif'.format(root + filename))
-            path2 = os.path.join('{0}_2.tif'.format(root + filename))
-
+            path1 = os.path.join('{0}_1.png'.format(root + filename))
+            path2 = os.path.join('{0}_2.png'.format(root + filename))
+        
         
         # load source images
         pair_loader = ImagePair(impath1=path1, impath2=path2, 
@@ -132,7 +146,7 @@ for j in range(len(datasets)):
 
         # perform image fusion
         with torch.no_grad():
-            res = model(Variable(img1.cuda()), Variable(img2.cuda()))
+            res = model(Variable(img1), Variable(img2))#.cuda()), Variable(img2.cuda()))
             res = denorm(mean, std, res[0]).clamp(0, 1) * 255
             res_img = res.cpu().data.numpy().astype('uint8')
             img = res_img.transpose([1,2,0])
